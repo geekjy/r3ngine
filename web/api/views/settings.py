@@ -195,7 +195,7 @@ class RengineUpdateCheck(APIView):
 					return version.parse('0.0.0')
 
 		try:
-			response = requests.get(github_api).json()
+			response = requests.get(github_api, timeout=15).json()
 			if 'message' in response and 'rate limit' in response['message'].lower():
 				return_response['message'] = 'RateLimited'
 			elif isinstance(response, list) and len(response) > 0:
@@ -212,7 +212,7 @@ class RengineUpdateCheck(APIView):
 		# Fallback: check .version file in master branch
 		version_url = 'https://raw.githubusercontent.com/whiterabb17/r3ngine/main/web/.version'
 		try:
-			raw_version_response = requests.get(version_url)
+			raw_version_response = requests.get(version_url, timeout=15)
 			if raw_version_response.status_code == 200:
 				raw_version = raw_version_response.text.strip().replace('v', '')
 				# If raw_version is higher than latest release or no release found

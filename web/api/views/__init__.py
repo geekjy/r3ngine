@@ -198,6 +198,11 @@ class TorStatusAPIView(APIView):
 			return Response({'running': running})
 		except TorUnavailableError:
 			return Response({'running': False})
+		except Exception as e:
+			# A docker socket that errors or times out should read as "tor is
+			# not running", not as a 500 on a status probe the UI polls.
+			logger.warning('[TorStatus] Could not determine TOR state: %s', e)
+			return Response({'running': False})
 
 
 class TorExitIPAPIView(APIView):
@@ -439,6 +444,12 @@ class GithubToolCheckGetLatestRelease(APIView):
 
 class ScanStatus(APIView):
 	permission_classes = [IsPenetrationTester]
+
+	# The completed buckets were already capped, but running/pending were not.
+	# This endpoint is polled from the dashboard, so an unbounded queue meant a
+	# poll could serialize the entire backlog into a web worker at once.
+	_ACTIVE_LIMIT = 100
+
 	def get(self, request):
 		req = self.request
 		slug = self.request.GET.get('project', None)
@@ -454,12 +465,13 @@ class ScanStatus(APIView):
 			ScanHistory.objects
 			.filter(domain__project__slug=slug)
 			.order_by('-start_scan_date')
-			.filter(scan_status=1)
+			.filter(scan_status=1)[:self._ACTIVE_LIMIT]
 		)
 		pending_scans = (
 			ScanHistory.objects
 			.filter(domain__project__slug=slug)
-			.filter(scan_status=-1)
+			.order_by('-start_scan_date')
+			.filter(scan_status=-1)[:self._ACTIVE_LIMIT]
 		)
 
 		# subtasks
@@ -473,12 +485,13 @@ class ScanStatus(APIView):
 			SubScan.objects
 			.filter(scan_history__domain__project__slug=slug)
 			.order_by('-start_scan_date')
-			.filter(status=1)
+			.filter(status=1)[:self._ACTIVE_LIMIT]
 		)
 		pending_tasks = (
 			SubScan.objects
 			.filter(scan_history__domain__project__slug=slug)
-			.filter(status=-1)
+			.order_by('-start_scan_date')
+			.filter(status=-1)[:self._ACTIVE_LIMIT]
 		)
 		response = {
 			'scans': {
@@ -622,8 +635,7 @@ class IPToDomain(APIView):
 				'ip_address': ip_address,
 				'message': f'Exception {e}'
 			}
-		finally:
-			return Response(response)
+		return Response(response)
 
 
 class VulnerabilityReport(APIView):
