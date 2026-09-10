@@ -28,6 +28,7 @@ import {
 import {
   Search,
   Activity,
+  Calendar,
   Clock,
   CheckCircle2,
   XCircle,
@@ -535,6 +536,12 @@ export const ScanHistoryPage: React.FC = () => {
                     </TableCell>
                     <TableCell sx={{ borderBottom: 1, borderColor: 'divider' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Calendar size={12} style={{ color: `${tokens.accent.primary}80` }} />
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.65rem' }}>
+                          Start: {scan.start_scan_date ? new Date(scan.start_scan_date).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                         <Clock size={12} style={{ color: `${tokens.accent.primary}80` }} />
                         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.65rem' }}>
                           Time: {scan.completed_ago || 'just now'}
