@@ -1,8 +1,14 @@
 #!/bin/bash
-# Sync GF patterns from image into volume (overwrites stale patterns)
+# Sync GF patterns from bind-mount or staged image into volume
 echo "Syncing GF patterns..."
 mkdir -p /root/.gf
-cp -f /usr/src/gf-patterns/*.json /root/.gf/
+if [ -d "/usr/src/app/gf-patterns" ]; then
+  cp -f /usr/src/app/gf-patterns/*.json /root/.gf/
+elif [ -d "/usr/src/gf-patterns" ]; then
+  cp -f /usr/src/gf-patterns/*.json /root/.gf/
+else
+  echo "Warning: no GF patterns directory found!"
+fi
 echo "GF patterns synced: $(ls /root/.gf/*.json | wc -l) patterns installed"
 
 # Install/update frontend dependencies only when package.json is updated or node_modules doesn't exist
@@ -10,7 +16,15 @@ echo "Checking frontend dependencies..."
 cd /usr/src/app/frontend
 if [ ! -d "node_modules" ] || [ package.json -nt node_modules ]; then
     echo "Installing/updating frontend dependencies (changes detected)..."
-    npm install
+    # `npm install` rewrites package-lock.json, and because ../frontend is a
+    # bind-mount that dirtied the tracked lockfile in the deploy checkout on
+    # every boot, which then blocked git checkout. `npm ci` never writes the
+    # lockfile and installs exactly what is committed.
+    if [ -f "package-lock.json" ]; then
+        npm ci || npm install --no-save
+    else
+        npm install --no-save
+    fi
 else
     echo "Frontend dependencies are up to date."
 fi
@@ -30,9 +44,13 @@ cd /usr/src/app
 echo "Collecting static files..."
 python3 manage.py collectstatic --noinput --clear
 
-# Create any pending migrations then apply them
-echo "Making migrations..."
-python3 manage.py makemigrations --noinput
+# Only autogenerate migrations in development. In production this wrote
+# migration files that exist in the container but not in git, so the next
+# deploy started from a different migration history than the repository.
+if [ "$DEBUG" = "1" ]; then
+    echo "Making migrations..."
+    python3 manage.py makemigrations --noinput
+fi
 echo "Running migrations..."
 python3 manage.py migrate --noinput
 

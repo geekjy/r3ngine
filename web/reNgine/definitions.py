@@ -258,8 +258,13 @@ VIGOLIUM_STRATEGY = 'strategy'
 VIGOLIUM_CONCURRENCY = 'concurrency'
 VIGOLIUM_RATE_LIMIT = 'rate_limit'
 VIGOLIUM_TIMEOUT = 'timeout'
+VIGOLIUM_SPIDER_MAX_TIME = 'spider_max_time'
 VIGOLIUM_MODULES = 'modules'
 VIGOLIUM_SEVERITY_FILTER = 'severity_filter'
+VIGOLIUM_RUN_PHASE_A = 'run_phase_a'     # Phase A: spidering + discovery
+VIGOLIUM_RUN_PHASE_B = 'run_phase_b'     # Phase B: known-issue-scan + dynamic-assessment
+VIGOLIUM_SCOPE_ORIGIN = 'scope_origin'   # Host scope strictness: all, relaxed, balanced, strict
+VIGOLIUM_SKIP_SPIDERING = 'skip_spidering'  # Remove spidering from Phase A (runs discovery only)
 
 VIGOLIUM_DEFAULT_CONFIG = {
     'run_vigolium': True,
@@ -267,6 +272,11 @@ VIGOLIUM_DEFAULT_CONFIG = {
     'concurrency': 50,
     'rate_limit': 100,
     'timeout': '15s',
+    'spider_max_time': '20m',
+    'run_phase_a': True,   # Phase A: spidering + discovery
+    'run_phase_b': True,   # Phase B: known-issue-scan + dynamic-assessment
+    'scope_origin': 'balanced',  # Host scope strictness: all, relaxed, balanced, strict
+    'skip_spidering': False,      # When True, spidering is removed from Phase A (discovery only)
 }
 
 # Tier 1 — passive ingestion harvest (works with root domain only, no subdomains needed)
@@ -293,6 +303,7 @@ VIGOLIUM_DEFAULT_ANALYSIS_CONFIG = {
     'concurrency': 20,
     'rate_limit': 50,
     'timeout': '10s',
+    'spider_max_time': '75m',
 }
 
 # Tier 3 — spidering within fetch_url against fetched URL set
@@ -301,6 +312,7 @@ VIGOLIUM_DEFAULT_SPIDER_CONFIG = {
     'concurrency': 30,
     'rate_limit': 80,
     'timeout': '20s',
+    'spider_max_time': '75m',
 }
 
 RUN_VIGOLIUM_AUDIT = 'run_vigolium_audit'
@@ -856,6 +868,7 @@ Ensure that:
 3. All URLs in the 'references' section begin with 'http://' or 'https://'.
 4. Remediation steps should be specific and actionable and should not contain any ambiguous or general recommendations. Format the remediation sub-sections clearly using bold text (e.g. **Short-Term Strategy:**) and bullet points.
 5. Refrain from including any personal opinions or subjective assessments in your report.
+6. CRITICAL: Do NOT include any conversational follow-up questions or offers of assistance (such as "Would you like to include a longer brief?" or "Let me know if you need more details"). Output ONLY the report content.
 """
 
 
@@ -874,22 +887,29 @@ ATTACK_SUGGESTION_GPT_SYSTEM_PROMPT = """
     I'm seeking insights into potential technical web application attacks that could be executed on this subdomain, along with explanations for why these attacks are feasible given the discovered information.
     Please provide a detailed list of these attack types and their underlying technical rationales on every attacks you suggested.
     Also suggest if any CVE ID, known exploits, existing vulnerabilities, any news articles URL related to the information provided to you.
+    CRITICAL: Do NOT include any conversational follow-up questions or offers of assistance (such as "Would you like to include a longer brief?"). Output ONLY the technical analysis.
 """
 
 
 LLM_REPORT_OVERVIEW_SYSTEM_PROMPT = """
 You are an expert penetration tester. Based on the provided assessment data, write a professional 'Overview' section for a security assessment report.
-The overview should provide a high-level summary of the assessment's scope, objectives, and key findings.
-Ensure the tone is technical yet accessible to project managers.
+The overview should provide a high-level summary of the assessment's scope, objectives, key findings, and a dedicated executive-ready Top Risks assessment.
+Ensure the tone is technical yet accessible to executive leadership and project managers.
+
+REQUIRED CONTENT SECTIONS:
+1. Scope & Objectives Overview
+2. Key Findings Summary
+3. Top Risks: Include a concise, executive-ready "Top Risks" section that directly maps discovered findings to likely threat scenarios (e.g. mapping an unauthenticated endpoint finding to an external data exfiltration threat scenario).
 
 FORMATTING REQUIREMENTS:
 1. Use clean and structured Markdown formatting. The output will be compiled directly to HTML, so proper Markdown tags must be used.
-2. Structure the "Key Findings" and detailed vulnerability areas/attributes as bulleted lists using `-` or `*` on separate lines.
+2. Structure the "Key Findings", "Top Risks", and detailed vulnerability areas/attributes as bulleted lists using `-` or `*` on separate lines.
 3. Ensure there is a blank line before starting any list, and a blank line between list items or major points to allow the markdown parser to render lists correctly.
-4. Use bold text (e.g., **Key Findings:**, **Severity Distribution:**, **Notable Insights:**, etc.) to label items and structure findings clearly.
+4. Use bold text (e.g., **Key Findings:**, **Top Risks:**, **Severity Distribution:**, **Notable Insights:**, etc.) to label items and structure findings clearly.
 5. Avoid using markdown headers like # or ##. Use bold text for emphasis instead.
 6. CRITICAL: Do NOT output findings as a continuous line/paragraph separated by hyphens (e.g. "Key findings - Finding 1 - Finding 2..."). Each finding must be a separate, clean bullet point.
 7. CRITICAL: Do NOT include any sign-offs, signatures, or placeholders like 'Sincerely', '[Your Name]', or '[Company Name]' at the end.
+8. CRITICAL: Do NOT include any conversational follow-up questions or offers of assistance at the end of the text (such as "Would you like to include a longer brief?", "Let me know if you want more details", or "Should I generate further sections?"). Output ONLY report content.
 """
 
 LLM_REPORT_EXECUTIVE_BRIEF_SYSTEM_PROMPT = """
@@ -902,6 +922,7 @@ FORMATTING REQUIREMENTS:
 3. If highlighting specific key risks or recommendations, organize them as a clean bulleted list using `-` or `*` on separate lines with a blank line before starting the list.
 4. Avoid using markdown headers like # or ##. Use bold text for emphasis instead.
 5. CRITICAL: Do NOT include any sign-offs, signatures, or placeholders like 'Sincerely', '[Your Name]', '[Company Name]', or 'Penetration Testing Expert' at the end. The text should end immediately after the final paragraph of the brief.
+6. CRITICAL: Do NOT include any conversational follow-up questions or offers of assistance (such as "Would you like to include a longer brief?" or "Let me know if you need anything else"). Output ONLY the brief content.
 """
 
 LLM_REPORT_CONCLUSION_SYSTEM_PROMPT = """
@@ -914,6 +935,7 @@ FORMATTING REQUIREMENTS:
 3. Organize remediation priorities or key takeaways as a clean bulleted list using `-` or `*` on separate lines.
 4. Avoid using markdown headers like # or ##. Use bold text for emphasis instead.
 5. CRITICAL: Do NOT include any sign-offs, signatures, or placeholders like 'Sincerely', '[Your Name]', or '[Company Name]' at the end.
+6. CRITICAL: Do NOT include any conversational follow-up questions or offers of assistance (such as "Would you like to include a longer brief?"). Output ONLY the report conclusion.
 """
 
 LLM_ATTACK_SCENARIO_SYSTEM_PROMPT = """
@@ -922,7 +944,7 @@ Your task is to describe a realistic attack scenario where an attacker leverages
 Explain the steps an attacker might take, the tools they might use, and the potential outcome (e.g., data theft, system takeover, etc.).
 Ensure the tone is technical, professional, and objective.
 Avoid using markdown headers like # or ##. Use bold text for emphasis if needed.
-CRITICAL: Do NOT include any sign-offs, signatures, or placeholders.
+CRITICAL: Do NOT include any sign-offs, signatures, placeholders, or conversational follow-up questions (such as "Would you like to include a longer brief?"). Output ONLY the attack scenario.
 """
 
 LLM_IMPACT_ASSESSMENT_SYSTEM_PROMPT = """
@@ -931,6 +953,7 @@ Instead of focusing on specific threat actors, focus on the **Potential Attack C
 Describe how this vulnerability fits into a broader attack path (e.g., Initial Access -> Lateral Movement -> Data Exfiltration).
 Provide a prioritized list of business consequences.
 Format the response clearly with sections for 'Potential Attack Chain' and 'Impact Summary'.
+CRITICAL: Do NOT include any conversational follow-up questions or offers of assistance (such as "Would you like to include a longer brief?"). Output ONLY the impact assessment.
 """
 
 LLM_ATTACK_PATH_REMEDIATION_SYSTEM_PROMPT = """
@@ -956,6 +979,7 @@ FORMATTING REQUIREMENTS:
 5. Do NOT use generic advice like "patch your systems" without specifics.
 6. Do NOT include sign-offs, signatures, or placeholders.
 7. CRITICAL: Each bullet must be on its own separate line with a blank line before the first bullet under each heading.
+8. CRITICAL: Do NOT include any conversational follow-up questions or offers of assistance (such as "Would you like to include a longer brief?"). Output ONLY the remediation guidance.
 """
 
 
@@ -973,6 +997,26 @@ Return ONLY valid JSON with these exact keys:
 }
 
 Be precise and technical. Do not include markdown, code blocks, or any text outside the JSON object.
+"""
+
+LLM_VULNERABILITY_SEVERITY_VALIDATION_SYSTEM_PROMPT = """
+You are a Lead Penetration Tester and Vulnerability Management Specialist.
+Your task is to re-evaluate the severity of a discovered vulnerability to determine if it has been misclassified (especially if marked as 'Info' or 'Low' by automated scanners despite high-risk characteristics like Cross-Site Scripting, SQL Injection, Remote Code Execution, Authentication Bypass, or Sensitive Data Exposure).
+
+You must evaluate the vulnerability based on standard security principles (CVSS v3.1, OWASP Top 10, NIST SP 800-115) and output ONLY a JSON object with the following schema:
+
+{
+    "suggested_severity": "info" | "low" | "medium" | "high" | "critical",
+    "suggested_cvss_score": 6.1,
+    "confidence": "High" | "Medium" | "Low",
+    "reasoning": "Detailed technical rationale explaining why the current severity is accurate or why it should be reclassified.",
+    "key_factors": [
+        "Key factor 1",
+        "Key factor 2"
+    ]
+}
+
+DO NOT wrap the response in markdown code blocks like ```json ... ```. Return ONLY raw valid JSON string.
 """
 
 

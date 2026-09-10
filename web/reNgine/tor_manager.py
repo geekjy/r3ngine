@@ -32,7 +32,7 @@ class TorManager:
 
     def _get_client(self):
         try:
-            return docker.from_env()
+            return docker.from_env(timeout=10)
         except docker.errors.DockerException as e:
             raise TorUnavailableError(f"Docker socket not available: {e}")
 

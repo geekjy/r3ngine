@@ -147,7 +147,8 @@ class HackerOneProgramViewSet(viewsets.ViewSet):
 			response = requests.get(
 				url,
 				headers=headers,
-				auth=(username, api_key)
+				auth=(username, api_key),
+				timeout=30
 			)
 
 			if response.status_code == 401:
@@ -208,7 +209,8 @@ class HackerOneProgramViewSet(viewsets.ViewSet):
 		response = requests.get(
 			url,
 			headers=headers,
-			auth=(username, api_key)
+			auth=(username, api_key),
+			timeout=30
 		)
 
 		if response.status_code == 401:

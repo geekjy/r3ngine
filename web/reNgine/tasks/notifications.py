@@ -314,7 +314,8 @@ def send_hackerone_report(vulnerability_id):
 		'https://api.hackerone.com/v1/hackers/reports',
 		auth=(api_key.username, api_key.key),
 		json=data,
-		headers=headers
+		headers=headers,
+		timeout=30
 	)
 	response = r.json()
 	status_code = r.status_code

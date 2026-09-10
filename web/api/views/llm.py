@@ -176,11 +176,12 @@ class OllamaManager(APIView):
 		try:
 			pull_model_api = f'{OLLAMA_INSTANCE}/api/pull'
 			_response = requests.post(
-				pull_model_api, 
+				pull_model_api,
 				json={
 					'name': model_name,
 					'stream': False
-				}
+				},
+				timeout=600
 			).json()
 			if _response.get('error'):
 				response['status'] = False
@@ -200,10 +201,11 @@ class OllamaManager(APIView):
 		}
 		try:
 			_response = requests.delete(
-				delete_model_api, 
+				delete_model_api,
 				json={
 					'name': model_name
-				}
+				},
+				timeout=60
 			).json()
 			if _response.get('error'):
 				response['status'] = False
