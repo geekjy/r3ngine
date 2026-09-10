@@ -44,7 +44,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go install -ldflags="-s -w" -v github.com/edoardottt/favirecon/cmd/favirecon@latest && \
     go install -ldflags="-s -w" -v github.com/fullstorydev/grpcurl/cmd/grpcurl@latest && \
     go install -ldflags="-s -w" -v github.com/mhmdiaa/second-order@latest && \
-    go install -ldflags="-s -w" -v github.com/praetorian-inc/julius/cmd/julius@latest && \
+    go install -ldflags="-s -w" -v github.com/praetorian-inc/julius/cmd/julius@v1.4.11 && \
     go install -ldflags="-s -w" -v github.com/denandz/sourcemapper@latest && \
     go install -ldflags="-s -w" -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
     go install -ldflags="-s -w" -v github.com/projectdiscovery/chaos-client/cmd/chaos@latest && \

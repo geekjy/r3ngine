@@ -39,6 +39,14 @@ from langchain_community.llms import Ollama
 from dashboard.models import LLMConfig
 from reNgine.privacy import PIIGate
 
+NO_QUESTIONS_SYSTEM_SUFFIX = (
+    "\n\nCRITICAL SYSTEM REQUIREMENT FOR ALL GENERATIONS: "
+    "Do NOT include any conversational follow-up questions, closing queries, "
+    "or offers for further assistance (such as 'Would you like to include a longer brief?', "
+    "'Let me know if you need more details', or 'Should I expand on this?'). "
+    "Output ONLY the requested report content or structured response directly."
+)
+
 class LLMBaseGenerator:
     def __init__(self, logger):
         self.logger = logger
@@ -63,6 +71,10 @@ class LLMBaseGenerator:
             user_message (str): User query/input prompt.
             max_tokens (int, optional): Maximum token limit for output generation.
         """
+        # Ensure universal requirement against conversational follow-ups/questions is present
+        if "CRITICAL SYSTEM REQUIREMENT FOR ALL GENERATIONS" not in system_message:
+            system_message = f"{system_message}{NO_QUESTIONS_SYSTEM_SUFFIX}"
+
         # Anonymize inputs
         masked_system = self.gate.anonymize(system_message)
         masked_user = self.gate.anonymize(user_message)

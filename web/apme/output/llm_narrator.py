@@ -55,6 +55,7 @@ class LLMNarrator:
         - Highlight high-risk capabilities like pivoting or RCE.
         - Keep it concise but descriptive (2-4 paragraphs).
         - Use a 'Findings' and 'Scenario' structure.
+        - CRITICAL: Do NOT include any conversational follow-up questions or offers of assistance (such as "Would you like to include a longer brief?"). Output ONLY the attack story.
         """
         
         user_message = (
